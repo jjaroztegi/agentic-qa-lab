@@ -1,0 +1,10 @@
+# Business expectations, the validation layer and agent access are owned by people, not agents
+# (guard-heal enforces it in CI).
+/catalog/                 @jjaroztegi
+/tests/e2e/support/       @jjaroztegi
+/tests/desktop/support/   @jjaroztegi
+/tools/guard-heal.mjs     @jjaroztegi
+/tools/agent.sh           @jjaroztegi
+/policy/                  @jjaroztegi
+/.agents/                 @jjaroztegi
+/.claude/                 @jjaroztegi

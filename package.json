@@ -1,0 +1,19 @@
+{
+  "name": "agentic-qa-lab",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "e2e": "playwright test",
+    "e2e:report": "playwright show-report evidence/playwright-report",
+    "test": "npm --prefix apps/mes test && npm --prefix apps/control-room test && node --test \"tools/*.test.mjs\"",
+    "check": "git ls-files \"*.sh\" tools/api tools/l2 | xargs -n1 bash -n && git ls-files \"*.mjs\" | xargs -n1 node --check"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "yaml": "^2.9.1"
+  }
+}
