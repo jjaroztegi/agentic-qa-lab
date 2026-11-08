@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# The run's desktop (L2 Java client), for agents and humans. DESKTOP_EXEC comes from tools/e2e-env.sh.
+#   tools/l2 launch                 start the L2 client against $MES_URL
+#   tools/l2 keys <xdotool args>    keyboard into the focused window (modal dialogs)
+#   tools/l2 <agent-desktop args>   e.g. tools/l2 snapshot --app java -i · tools/l2 click @e12
+set -euo pipefail
+read -ra EXEC <<< "${DESKTOP_EXEC:-docker exec qa-desktop}"
+run() { "${EXEC[@]}" bash -lc "source ~/.desktop-env; $1"; }
+case ${1:-} in
+  launch) run "(l2-client $(printf %q "${MES_URL:-http://127.0.0.1:13000}") >/tmp/app.log 2>&1 &)" ;;
+  keys) shift; run "xdotool $(printf '%q ' "$@")" ;;
+  "") sed -n 2,5p "$0" >&2; exit 2 ;;
+  *) run "agent-desktop $(printf '%q ' "$@")" ;;
+esac

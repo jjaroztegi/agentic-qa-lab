@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Launch the Java L2 client (source-file mode) with the ATK bridge on, on any CPU architecture.
+# Usage: l2-client <MES_URL>
+exec java -cp /usr/share/java/java-atk-wrapper.jar -Djava.library.path="$(ls -d /usr/lib/*-linux-gnu/jni | head -1)" \
+  /home/qa/l2/L2Client.java "$@"
