@@ -1,0 +1,24 @@
+# Business case. Written by the business, independent of any tool.
+id: CP-002
+title: Quality hold of a coil from the Level 2 desktop client
+process: Quality
+subprocess: Coil hold and release
+systems: [L2 (Java desktop), MES]
+priority: A
+owner: Rolling mill quality (key user)
+frequency: daily
+preconditions:
+  - There is an order in progress in the MES with at least one released coil
+data:
+  coil: the last released coil of the order
+steps:
+  - Open the client "Level 2 · Hot strip mill"
+  - Press "Refresh" and select the coil in the table
+  - Press "Hold" and confirm the dialog with the reason "Flatness defect"
+expected_results:
+  - The client table shows the coil as HOLD
+  - In the MES the coil shows as "Held" and the order's produced quantity drops by the coil's weight
+data_validation:
+  - "MES GET /api/coils?quality=HOLD contains the coil"
+dependencies:
+  needs: an order in progress (CP-001 leaves one after step 4)

@@ -1,0 +1,21 @@
+# Business case. Written by the business, independent of any tool.
+id: CP-003
+title: The MES rejects a coil outside the mill's operating envelope
+process: Order-to-coil
+subprocess: Coil registration
+systems: [MES]
+priority: B
+owner: Rolling mill shift supervisor
+frequency: daily
+preconditions:
+  - There is a pending or in-progress order in the MES
+data:
+  weight_kg: 45000   # the maximum accepted is 40,000 kg
+steps:
+  - Open the order in the MES
+  - Try to register a 45,000 kg coil
+expected_results:
+  - The MES shows "Weight (kg) must be between 1000 and 40000" and does not register the coil
+data_validation:
+  - "MES GET /api/orders/{order}: the number of coils does not change"
+dependencies: {}

@@ -1,0 +1,36 @@
+# Business case. Written by the business, independent of any tool.
+id: CP-001
+title: Hot-rolled coil sales order through to production confirmed in the ERP
+process: Order-to-coil
+subprocess: Sales order → manufacturing order → rolling → production confirmation
+systems: [ERP, MES]
+priority: A   # high criticality × daily use
+owner: Production planning (key user)
+frequency: daily
+preconditions:
+  - The customer "Northline Fabrication Ltd." exists in the ERP
+  - The product "Hot-rolled coil S275JR" is made to order (MTO + manufacture route)
+  - There is stock of slab S275JR
+data:
+  customer: Northline Fabrication Ltd.
+  product: Hot-rolled coil S275JR
+  quantity_t: 48.5
+  coils:
+    - { coil: "<unique per run>", heat: "512345", weight_kg: 24500, thickness_mm: 3.5, width_mm: 1500, quality_status: Released }
+    - { coil: "<unique per run>", heat: "512345", weight_kg: 23250, thickness_mm: 3.5, width_mm: 1500, quality_status: Released }
+    - { coil: "<unique per run>", heat: "512346", weight_kg: 22000, thickness_mm: 3.5, width_mm: 1500, quality_status: Held }
+steps:
+  - In the ERP, as the sales rep, create a quotation for the customer with the product and quantity, and confirm it
+  - Check that the ERP creates a manufacturing order for the sales order
+  - In the MES, open the order that arrives from the ERP for that sales order
+  - Register the three coils with their data
+  - Complete the order
+expected_results:
+  - The MES order changes to "Confirmed in ERP"
+  - The MES shows produced 47.750 t (released coils only)
+  - In the ERP the manufacturing order is done with 47.750 t produced
+data_validation:
+  - "ERP mrp.production (origin = sales order): state = done, qty_produced = 47.75"
+  - "MES GET /api/orders/{order}: status = reported, produced_t = 47.75"
+dependencies:
+  creates: [sales order, done manufacturing order, 3 coils]

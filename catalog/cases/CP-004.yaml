@@ -1,0 +1,35 @@
+# Business case. Written by the business, independent of any tool.
+id: CP-004
+title: S355J2 sales order reaches the MES with the correct customer, grade and quantity
+process: Order-to-coil
+subprocess: Sales order → manufacturing order → pending order in the MES (ERP → MES interface)
+systems: [ERP, MES]
+priority: A   # critical
+owner: Production planning (key user)
+frequency: daily
+preconditions:
+  - The customer "Meridian Construction Inc." exists in the ERP
+  - The product "Hot-rolled coil S355J2" is made to order (MTO + manufacture route)
+  - There is slab stock for the manufacturing order
+data:
+  customer: Meridian Construction Inc.
+  product: Hot-rolled coil S355J2
+  grade: S355J2
+  quantity_t: 25.0
+steps:
+  - In the ERP, as the sales rep, create a quotation for the customer with the product and quantity, and confirm it
+  - Check that the ERP creates a manufacturing order for the sales order
+  - In the MES, open the list of manufacturing orders
+  - Find the order that arrives from the ERP for that sales order
+expected_results:
+  - The MES order list shows the order for the sales order with customer "Meridian Construction Inc."
+  - The order shows grade "S355J2"
+  - The order shows a quantity of 25.000 t
+  - The order has status "Pending"
+data_validation:
+  - "ERP sale.order (the created sales order): state = sale, customer = Meridian Construction Inc."
+  - "ERP mrp.production (origin = sales order): product_qty = 25.0, product Hot-rolled coil S355J2"
+  - "MES GET /api/orders/{ERP order}: customer = Meridian Construction Inc., grade = S355J2, qty_t = 25.0, status = pending"
+dependencies:
+  creates: [confirmed sales order, manufacturing order, pending order in the MES]
+# Functional review 2026-11-08: PENDING fields completed and customer name corrected to match the ERP master data.
