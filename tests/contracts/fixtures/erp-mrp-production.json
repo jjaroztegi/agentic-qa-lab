@@ -1,0 +1,7 @@
+{
+  "_source": "mrp.production search_read from Odoo 19 QA (fields used by apps/mes/src/erp.ts), 2026-11-07",
+  "customer": "Northline Fabrication Ltd.",
+  "mo": {"id": 1, "name": "WH/MO/00001", "origin": "S00001", "state": "confirmed", "product_qty": 48.5,
+         "product_id": [5, "[HRC-S275] Hot-rolled coil S275JR"],
+         "date_deadline": "2026-11-07 23:10:54", "date_start": "2026-11-07 22:10:54"}
+}
