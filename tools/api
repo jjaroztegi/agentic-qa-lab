@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# The documented interfaces of the systems under test, for agents and people: only the run's ERP and
+# MES are reachable through it, so an agent allowed to use it cannot call anything else.
+#   tools/api mes GET  /api/coils?quality=HOLD
+#   tools/api mes POST /api/orders '{"erp_ref":"…","customer":"…",…}'
+#   tools/api erp <model> <method> '<args json>' ['<kwargs json>']     ERP JSON-RPC (like BAPI/OData in SAP)
+#     e.g. tools/api erp res.partner search_read '[[["customer_rank",">",0]]]' '{"fields":["name"]}'
+# URLs and database come from the isolated environment (MES_URL, ERP_URL, ERP_DB).
+set -euo pipefail
+sys=${1:-}; shift || true
+case $sys in
+  mes)
+    method=${1:?method}; path=${2:?path /api/...}; body=${3:-}
+    [[ $path == /api/* ]] || { echo "Only the documented MES API (/api/...)" >&2; exit 2; }
+    args=(-sS -X "$method" "${MES_URL:-http://127.0.0.1:13000}$path" -w '\n(HTTP %{http_code})\n')
+    [[ -n $body ]] && args+=(-H 'content-type: application/json' --data "$body")
+    curl "${args[@]}" ;;
+  erp)
+    node -e '
+      const [model, method, args = "[]", kwargs = "{}"] = process.argv.slice(1);
+      const url = (process.env.ERP_URL ?? "http://127.0.0.1:18069") + "/jsonrpc";
+      const db = process.env.ERP_DB ?? "erp", pw = process.env.ERP_ADMIN_PASSWORD ?? "admin";
+      const call = async (service, m, a) => {
+        const r = await (await fetch(url, { method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { service, method: m, args: a } }) })).json();
+        if (r.error) throw new Error(r.error.data?.message ?? JSON.stringify(r.error));
+        return r.result;
+      };
+      (async () => {
+        const uid = await call("common", "login", [db, "admin", pw]);
+        const out = await call("object", "execute_kw", [db, uid, pw, model, method, JSON.parse(args), JSON.parse(kwargs)]);
+        console.log(JSON.stringify(out, null, 1));
+      })().catch((e) => { console.error("ERP: " + e.message); process.exit(1); });' "$@" ;;
+  *) sed -n 2,7p "$0" >&2; exit 2 ;;
+esac

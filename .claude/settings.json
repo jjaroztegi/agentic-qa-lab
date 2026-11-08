@@ -1,0 +1,21 @@
+{
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "Bash(npx playwright test:*)",
+      "Bash(npx playwright show-trace:*)",
+      "Bash(curl -s http://127.0.0.1:*)",
+      "mcp__playwright-test"
+    ],
+    "deny": [
+      "Edit(tests/e2e/support/**)",
+      "Write(tests/e2e/support/**)",
+      "Edit(catalog/**)",
+      "Write(catalog/**)",
+      "Edit(policy/**)",
+      "Write(policy/**)",
+      "Edit(tools/agent.sh)",
+      "Write(tools/agent.sh)"
+    ]
+  }
+}

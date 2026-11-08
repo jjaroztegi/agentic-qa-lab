@@ -1,0 +1,26 @@
+# What a test agent may know about each system. Most systems in a plant are bought: the agent
+# learns them as a new key user would, through their screens and their documented interfaces,
+# never through their code. Only the systems we build ourselves expose their source.
+#   source: path of its source in this repo (in-house system) or null (black box)
+#   access: the ways in, for the agent and for the tests it writes
+# Enforced by tools/pipeline/author.sh: the agent works in a sealed copy of the repo that does not
+# contain the source of black-box systems, and may not read the original checkout.
+# Protected like catalog/ (CODEOWNERS, agent permissions): agents cannot change their own access.
+systems:
+  ERP:
+    name: ERP (Odoo 19, standing in for SAP)
+    type: commercial
+    source: null
+    access: [web screens, documented API (JSON-RPC; BAPI/OData in SAP)]
+  L2:
+    name: Level 2 client (vendor Java desktop application)
+    type: commercial
+    source: null
+    access: [desktop screens (accessibility tree)]
+  MES:
+    name: Rolling mill MES (built in-house)
+    type: in-house
+    source: apps/mes
+    access: [web screens, REST API, source code]
+# A case with `black_box: true` gets no source at all, in-house systems included (to test a system
+# the way an outside party would, or to check that the case can be automated without the code).
