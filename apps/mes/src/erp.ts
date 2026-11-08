@@ -59,6 +59,18 @@ export class Erp {
   }
 }
 
+// Odoo returns datetimes in UTC ("2026-12-14 23:00:00"); the mill plans by the plant's calendar day.
+const PLANT_TZ = process.env.PLANT_TZ ?? "Europe/Berlin";
+const dayIn = (tz: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
+
+/** An Odoo date or UTC datetime as the plant's calendar day (YYYY-MM-DD), or null. */
+export function plantDate(value: string | false | null | undefined, tz = PLANT_TZ): string | null {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = new Date(`${value.replace(" ", "T")}Z`);
+  return Number.isNaN(d.getTime()) ? null : dayIn(tz).format(d);
+}
+
 export function toInbound(mo: any, customer: string): InboundOrder {
   const product = String(mo.product_id[1]).replace(/^\[[^\]]*\]\s*/, "");
   const { order, errors } = parseInboundOrder({
@@ -68,7 +80,7 @@ export function toInbound(mo: any, customer: string): InboundOrder {
     product,
     grade: gradeOf(product),
     qty_t: mo.product_qty,
-    due_date: (mo.date_deadline || mo.date_start || "").slice(0, 10) || null,
+    due_date: plantDate(mo.date_deadline || mo.date_start),
   });
   if (!order) throw new Error(`ERP->MES contract violated by ${mo.name}: ${errors.join("; ")}`);
   return order;
