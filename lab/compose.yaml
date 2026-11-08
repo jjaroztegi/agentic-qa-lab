@@ -1,0 +1,107 @@
+# QA lab: stand-ins for the systems of a hot strip mill.
+#   erp      Odoo 19 Community  -> stands in for SAP (commercial, black box, we only own config + data)
+#   mes      apps/mes           -> the in-house MES (our code, our tests)
+#   n8n      n8n                -> QA control tower (triggers, intake form, notifications)
+#   desktop  Linux desktop      -> runs the Java Swing L2 client (vendor Level 2 stand-in) for agent-desktop
+#   control  apps/control-room -> control room: live/replay view of runs and agents
+#   erp-new  second Odoo        -> "lift & shift" target, restored from erp (profile: migration)
+# Every port binds to loopback; nothing here is meant to be public.
+name: qa-lab
+
+x-pg: &pg
+  image: postgres:17
+  environment:
+    POSTGRES_USER: odoo
+    POSTGRES_PASSWORD: odoo
+    POSTGRES_DB: postgres
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U odoo"]
+    interval: 5s
+    retries: 20
+  restart: unless-stopped
+
+services:
+  erp-db:
+    <<: *pg
+    volumes: [erp-db:/var/lib/postgresql/data]
+
+  erp:
+    image: odoo:19.0
+    depends_on: { erp-db: { condition: service_healthy } }
+    environment: { HOST: erp-db, USER: odoo, PASSWORD: odoo }
+    command: ["--db-filter=^erp", "--without-demo=all"]
+    ports: ["127.0.0.1:18069:8069"]
+    volumes: [erp-data:/var/lib/odoo]
+    restart: unless-stopped
+
+  mes:
+    build: ../apps/mes
+    environment:
+      ERP_URL: http://erp:8069
+      ERP_DB: erp
+      ERP_USER: interface.mes
+      ERP_PASSWORD: ${ERP_INTERFACE_PASSWORD:-mes-qa-only}
+      SYNC_INTERVAL_S: "10"
+    ports: ["127.0.0.1:13000:3000"]
+    volumes: [mes-data:/data]
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n:2.46.6
+    environment:
+      N8N_HOST: localhost
+      N8N_SECURE_COOKIE: "false"
+      GENERIC_TIMEZONE: Europe/Berlin
+      TZ: Europe/Berlin
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      WEBHOOK_URL: http://localhost:15678/
+    ports: ["127.0.0.1:15678:5678"]
+    volumes: [n8n-data:/home/node/.n8n]
+    restart: unless-stopped
+
+  # Control room: what the automation is doing, live and afterwards (events, agent narration, screens).
+  # Pipelines post to it with tools/emit.mjs (QA_EVENTS_URL=http://127.0.0.1:17000).
+  control:
+    build: ../apps/control-room
+    ports: ["127.0.0.1:17000:17000"]
+    volumes:
+      - control-data:/data
+      - ../catalog:/repo/catalog:ro
+      - ../tests:/repo/tests:ro
+    restart: unless-stopped
+
+  # Desktop session (Xvfb + AT-SPI) for the Java L2 client; noVNC on 127.0.0.1:6080 to watch.
+  desktop:
+    build: ./desktop
+    image: qa-desktop:local
+    container_name: qa-desktop
+    network_mode: host
+    ipc: host   # X shared memory with browsers started from the host (QA_SHOW=1)
+    volumes: ["../apps/l2-desktop:/home/qa/l2:ro"]
+    restart: unless-stopped
+
+  # --- lift & shift target (docker compose --profile migration up -d) ---
+  erp-new-db:
+    <<: *pg
+    profiles: [migration]
+    volumes: [erp-new-db:/var/lib/postgresql/data]
+
+  erp-new:
+    image: odoo:19.0
+    profiles: [migration]
+    depends_on: { erp-new-db: { condition: service_healthy } }
+    environment: { HOST: erp-new-db, USER: odoo, PASSWORD: odoo }
+    command: ["--db-filter=^erp", "--without-demo=all"]
+    ports: ["127.0.0.1:18070:8069"]
+    volumes: [erp-new-data:/var/lib/odoo]
+    restart: unless-stopped
+
+volumes:
+  erp-db:
+  erp-data:
+  mes-data:
+  n8n-data:
+  control-data:
+  erp-new-db:
+  erp-new-data:
