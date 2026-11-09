@@ -1,0 +1,94 @@
+# Own code (MES): every change runs unit + contract tests, then the end-to-end business cases
+# against an isolated copy of the QA ERP. If e2e fails, an agent triages it:
+#   test drift      -> it repairs the locators, a deterministic guard vets the repair, e2e reruns
+#   app regression  -> the change is blocked, with a business-readable explanation and evidence
+# The agent steps are plain scripts (tools/agent.sh), so the same job runs in Azure DevOps.
+name: ci
+on:
+  pull_request:
+    # A PR that only adds a business case is the authoring agent's job: author.yml proves the new
+    # test outside the agent, and nothing in the systems under test changes.
+    paths-ignore: ["catalog/**", "specs/**", "docs/**", "**/*.md"]
+  push: { branches: [main] }
+  workflow_dispatch:
+
+concurrency: { group: "ci-${{ github.ref }}", cancel-in-progress: true }
+permissions: { contents: write, pull-requests: write, issues: write }
+
+jobs:
+  unit:
+    name: unit + contract (MES)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: npm ci && npm test
+        working-directory: apps/mes
+      - name: guard-heal self-test
+        run: node tools/guard-heal.test.mjs
+      - name: control room (narration, event store)
+        run: npm ci && npm test
+        working-directory: apps/control-room
+
+  e2e:
+    name: e2e business cases (ERP + MES)
+    needs: unit
+    if: vars.QA_LAB_RUNNERS == 'true'   # the lab's self-hosted runners are online
+    runs-on: [self-hosted, qa-lab]   # inside the network: reaches the QA systems
+    env:
+      RUN_ID: "${{ github.run_id }}_${{ github.run_attempt }}"
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0, ref: "${{ github.head_ref || github.ref }}" }
+      - run: npm ci
+      - name: Business cases on an isolated copy, agent triage and heal (filmed)
+        id: ci
+        continue-on-error: true
+        env:
+          PR_NUMBER: "${{ github.event.pull_request.number }}"
+          CI_TITLE: "${{ github.event.pull_request.title || github.event.head_commit.message }}"
+        run: |
+          base=""
+          if [ "${{ github.event_name }}" = pull_request ]; then git fetch -q origin "${{ github.base_ref }}"; base="origin/${{ github.base_ref }}"; fi
+          tools/pipeline/ci.sh "$base"
+
+      - name: Push healed test
+        if: github.event_name == 'pull_request' && steps.ci.outcome == 'success'
+        env: { BRANCH: "${{ github.head_ref }}" }
+        run: |
+          jq -e '.rerun == "ok"' evidence/ci.json >/dev/null || exit 0
+          git config user.name "qa-agent"; git config user.email "qa-agent@users.noreply.github.com"
+          git commit -am "test: repair e2e locators after UI change (qa-triage)" -m "Guard: tools/guard-heal.mjs OK. Assertions and catalog untouched."
+          git push origin "HEAD:$BRANCH"
+
+      - name: Publish the replay (screen + agent steps)
+        id: replay
+        if: always()
+        run: echo "url=$(tools/pipeline/publish-replay.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Report to PR and n8n
+        if: always() && github.event_name == 'pull_request' && hashFiles('evidence/triage.json') != ''
+        env: { GH_TOKEN: "${{ github.token }}", REPLAY_URL: "${{ steps.replay.outputs.url }}" }
+        run: node tools/report-triage.mjs "${{ github.event.pull_request.number }}"
+
+      - name: Evidence pack
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: "evidence-${{ env.RUN_ID }}", path: evidence/, retention-days: 30 }
+
+      - name: Teardown (also when the run is cancelled)
+        if: always()
+        env: { JOB_STATUS: "${{ job.status }}" }
+        run: |
+          # A cancelled job never reports its verdict: say so, or the control room shows it running.
+          if [ "$JOB_STATUS" = cancelled ]; then
+            node tools/emit.mjs event "{\"run\":\"$RUN_ID\",\"source\":\"ci\",\"kind\":\"result\",\"status\":\"warn\",\"title\":\"Cancelled\"}"
+          fi
+          tools/e2e-env.sh down "$RUN_ID"
+
+      - name: Verdict
+        if: steps.ci.outcome == 'failure'
+        run: |
+          echo "::error::E2E failed: $(jq -r '.verdict // "no triage"' evidence/triage.json 2>/dev/null)"
+          exit 1

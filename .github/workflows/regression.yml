@@ -1,0 +1,58 @@
+# Commercial systems: black-box regression on a shared QA environment, launched by an event
+# (vendor release, SAP transport, migration rehearsal) from n8n, on a schedule, or by hand.
+# With mode=migration it also snapshots business data on source and target and compares them.
+name: regression
+on:
+  workflow_dispatch:
+    inputs:
+      target: { description: "ERP under test (erp = current, erp-new = migrated)", default: erp, type: choice, options: [erp, erp-new] }
+      mode: { description: "regression | migration (adds before/after data comparison)", default: regression, type: choice, options: [regression, migration] }
+      reason: { description: "Why (shown in the report)", default: manual }
+  schedule:
+    - cron: "0 5 * * 1-5"
+
+permissions: { contents: read }
+
+jobs:
+  regression:
+    if: vars.QA_LAB_RUNNERS == 'true'
+    runs-on: [self-hosted, qa-lab]
+    env:
+      RUN_ID: "reg_${{ github.run_id }}"
+      REASON: "${{ inputs.reason || 'scheduled' }}"
+      TARGET: "${{ inputs.target || 'erp' }}"
+      MODE: "${{ inputs.mode || 'regression' }}"
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - name: Business cases on the target (+ data comparison for migrations), filmed
+        id: reg
+        continue-on-error: true
+        run: tools/pipeline/regression.sh "$TARGET" "$MODE"
+      - name: Notify n8n
+        if: always()
+        run: |
+          jq -n --arg target "$TARGET" --arg mode "$MODE" --arg reason "$REASON" \
+            --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg e2e "$(jq -r .e2e evidence/regression.json)" --arg compare "$(jq -r '.compare // "skipped"' evidence/regression.json)" \
+            --slurpfile results evidence/results.json \
+            --rawfile diff <(cat evidence/compare/summary.md 2>/dev/null || true) \
+            '{source:"regression", target:$target, mode:$mode, reason:$reason, run:$run, e2e:$e2e, compare:$compare,
+              stats:$results[0].stats, diff:$diff}' \
+          | curl -sf -m 5 -X POST -H 'content-type: application/json' --data @- "${N8N_QA_WEBHOOK:-http://127.0.0.1:15678/webhook/qa-results}" || echo "n8n not reachable"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "evidence-regression-${{ github.run_id }}", path: evidence/ }
+
+      - name: Teardown (also when the run is cancelled)
+        if: always()
+        env: { JOB_STATUS: "${{ job.status }}" }
+        run: |
+          # A cancelled job never reports its verdict: say so, or the control room shows it running.
+          if [ "$JOB_STATUS" = cancelled ]; then
+            node tools/emit.mjs event "{\"run\":\"$RUN_ID\",\"source\":\"ci\",\"kind\":\"result\",\"status\":\"warn\",\"title\":\"Cancelled\"}"
+          fi
+          tools/e2e-env.sh down "$RUN_ID"
+      - name: Verdict
+        if: steps.reg.outcome == 'failure'
+        run: exit 1

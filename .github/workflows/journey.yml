@@ -1,0 +1,29 @@
+# Closes the loop in the control room: review and merge of a case's PR light the last stages of
+# its journey (intake -> draft -> PR -> agent -> proof -> review -> merge).
+name: journey
+on:
+  pull_request_review: { types: [submitted] }
+  pull_request: { types: [closed] }
+permissions: { contents: read, pull-requests: read }
+jobs:
+  emit:
+    if: vars.QA_LAB_RUNNERS == 'true'
+    runs-on: [self-hosted, qa-lab]
+    steps:
+      # Full checkout: a sparse one would stay configured in the self-hosted runner's workspace.
+      - uses: actions/checkout@v4
+      - env:
+          GH_TOKEN: "${{ github.token }}"
+          PR: "${{ github.event.pull_request.number }}"
+          STATE: "${{ github.event.review.state }}"
+          MERGED: "${{ github.event.pull_request.merged }}"
+        run: |
+          case_id=$(gh pr view "$PR" --json files -q '[.files[].path|select(startswith("catalog/cases/"))][0] // ""' | xargs -r basename | sed 's/\.yaml$//')
+          run="pr_${PR}"
+          node tools/emit.mjs run "$run" "$(jq -nc --arg c "$case_id" --argjson pr "$PR" '{workflow:"review", pr:$pr, case:(if $c=="" then null else $c end)}')"
+          if [ "${{ github.event_name }}" = pull_request_review ]; then
+            s=info; [ "$STATE" = approved ] && s=ok; [ "$STATE" = changes_requested ] && s=warn
+            node tools/emit.mjs stage "$run" review "$s" "Review: $STATE (${{ github.event.review.user.login }})"
+          elif [ "$MERGED" = true ]; then
+            node tools/emit.mjs stage "$run" merge ok "Merged into main"
+          fi
