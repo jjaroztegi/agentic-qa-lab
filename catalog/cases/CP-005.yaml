@@ -1,0 +1,32 @@
+id: CP-005
+title: A sales order with a committed delivery date reaches the MES with that date
+process: Order-to-coil
+subprocess: Sales order confirmation → order transfer to the MES with the committed delivery date
+systems: [ERP, MES]
+priority: A
+owner: Production planning manager
+frequency: daily
+preconditions:
+  - The customer "Atlantic Tube Ltd." exists in the ERP
+  - The product "Pickled coil DD11" exists in the ERP
+  - "PENDING: product configuration (e.g. made to order / manufacture route) required for the order to be sent to the MES"
+data:
+  customer: Atlantic Tube Ltd.
+  product: Pickled coil DD11
+  grade: DD11
+  quantity_t: 30
+  delivery_date: "2026-12-15"
+steps:
+  - In the ERP, as the sales rep, create a quotation for the customer with the product, a quantity of 30 t and a committed delivery date of 2026-12-15
+  - Confirm the quotation so that it becomes a sales order
+  - In the MES, open the list of manufacturing orders
+  - Find the order that arrived from the ERP for that sales order
+expected_results:
+  - The ERP sales order is confirmed (state = sale) with committed delivery date 2026-12-15
+  - The MES list shows an order for the sales order with customer "Atlantic Tube Ltd.", grade DD11, quantity 30 t and due date 2026-12-15
+  - "PENDING: maximum time allowed for the order to arrive in the MES after confirmation in the ERP"
+data_validation:
+  - "ERP sale.order (name = sales order): state = sale, commitment_date = 2026-12-15, partner = Atlantic Tube Ltd."
+  - "MES GET /api/orders (order for the sales order): customer = Atlantic Tube Ltd., grade = DD11, quantity = 30 t, due date = 2026-12-15 (PENDING: exact field names and units in the /api/orders response)"
+dependencies:
+  creates: [sales order, MES order]
