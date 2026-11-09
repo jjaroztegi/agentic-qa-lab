@@ -1,0 +1,32 @@
+# Business case. Written by the business, independent of any tool.
+id: CP-006
+title: An out-of-tolerance thickness measurement holds the coil automatically (Level 2)
+process: Quality
+subprocess: Measurement at line exit
+systems: [L2 (Java desktop), MES]
+priority: A
+owner: Rolling mill quality (key user)
+frequency: daily
+preconditions:
+  - There is an order in progress in the MES with grade S275JR and a released coil of 3.00 mm × 1250 mm nominal
+  - "S275JR specification in the MES: thickness ± 0.15 mm, width −0/+10 mm, flatness ≤ 15 I"
+data:
+  coil: the released coil of the order
+  thickness_mm: 3.25
+  width_mm: 1252
+  flatness_i: 8
+steps:
+  - Open the client "Level 2 · Hot strip mill" and press "Measurements"
+  - Type the coil in "Coil to measure" and press "Load coil"
+  - Enter thickness 3.25, width 1252 and flatness 8 and press "Register measurement"
+expected_results:
+  - Before measuring, the client shows the thickness limits "2.85 – 3.15 mm"
+  - The warning "Measurement out of tolerance" appears with the text "Thickness 3.25 mm outside 2.85–3.15 mm"
+  - The coil goes to HOLD with reason "Thickness out of tolerance" without the operator pressing "Hold"
+  - The order's produced quantity drops by exactly the coil's weight
+data_validation:
+  - "MES GET /api/coils/{id}: quality = HOLD, hold_motive = Thickness out of tolerance, measurements[0].result = NOK"
+  - "MES GET /api/coils/{id}: events[0].action = HOLD, events[0].operator = MES"
+  - "MES GET /api/orders/{order}: produced_t = previous produced − coil weight / 1000"
+dependencies:
+  needs: an order in progress (CP-001 leaves one after step 4)
