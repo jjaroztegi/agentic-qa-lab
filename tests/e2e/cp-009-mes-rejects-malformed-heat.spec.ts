@@ -33,12 +33,12 @@ test("CP-009 The MES rejects a coil with a malformed heat number", async ({ page
   });
 
   await test.step(`Try to add a coil with heat no. ${heat}`, async () => {
-    await page.getByRole("textbox", { name: "Coil no." }).fill(coilNo);
-    await page.getByRole("textbox", { name: "Heat no." }).fill(String(heat));
+    await page.getByRole("textbox", { name: "Coil number" }).fill(coilNo);
+    await page.getByRole("textbox", { name: "Heat number" }).fill(String(heat));
     await page.getByRole("textbox", { name: "Weight (kg)" }).fill(String(weight_kg));
     await page.getByRole("textbox", { name: "Thickness (mm)" }).fill(String(FORM_FILLERS.thickness_mm));
     await page.getByRole("textbox", { name: "Width (mm)" }).fill(String(FORM_FILLERS.width_mm));
-    await page.getByRole("button", { name: "Register coil" }).click();
+    await page.getByRole("button", { name: "Add coil" }).click();
   });
 
   await test.step('The MES shows "Heat no. must have 6 digits" and does not register the coil', async () => {

@@ -79,13 +79,13 @@ test("CP-001 Hot-rolled coil sales order through to production confirmed in the 
   await test.step("Register the three coils with their data", async () => {
     const table = page.getByRole("table", { name: "Coils" });
     for (const k of coils) {
-      await page.getByRole("textbox", { name: "Coil no." }).fill(k.coil);
-      await page.getByRole("textbox", { name: "Heat no." }).fill(k.heat);
+      await page.getByRole("textbox", { name: "Coil number" }).fill(k.coil);
+      await page.getByRole("textbox", { name: "Heat number" }).fill(k.heat);
       await page.getByRole("textbox", { name: "Weight (kg)" }).fill(String(k.weight_kg));
       await page.getByRole("textbox", { name: "Thickness (mm)" }).fill(String(k.thickness_mm));
       await page.getByRole("textbox", { name: "Width (mm)" }).fill(String(k.width_mm));
       await page.getByRole("combobox", { name: "Quality status" }).selectOption({ label: k.quality_status });
-      await page.getByRole("button", { name: "Register coil" }).click();
+      await page.getByRole("button", { name: "Add coil" }).click();
       const row = table.getByRole("row").filter({ has: page.getByRole("cell", { name: k.coil, exact: true }) });
       await expect(row).toContainText(k.quality_status);
     }

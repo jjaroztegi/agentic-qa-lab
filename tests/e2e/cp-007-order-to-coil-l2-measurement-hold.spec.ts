@@ -126,13 +126,13 @@ test("CP-007 From the ERP sales order to confirmed production, with a coil held 
 
     const table = page.getByRole("table", { name: "Coils" });
     for (const k of coils) {
-      await page.getByRole("textbox", { name: "Coil no." }).fill(k.coil);
-      await page.getByRole("textbox", { name: "Heat no." }).fill(k.heat);
+      await page.getByRole("textbox", { name: "Coil number" }).fill(k.coil);
+      await page.getByRole("textbox", { name: "Heat number" }).fill(k.heat);
       await page.getByRole("textbox", { name: "Weight (kg)" }).fill(String(k.weight_kg));
       await page.getByRole("textbox", { name: "Thickness (mm)" }).fill(String(k.thickness_mm));
       await page.getByRole("textbox", { name: "Width (mm)" }).fill(String(k.width_mm));
       await page.getByRole("combobox", { name: "Quality status" }).selectOption({ label: "Released" });
-      await page.getByRole("button", { name: "Register coil" }).click();
+      await page.getByRole("button", { name: "Add coil" }).click();
       await expect(table.getByRole("row").filter({ has: page.getByRole("cell", { name: k.coil, exact: true }) })).toContainText("Released");
     }
     await expect(table.getByRole("row")).toHaveCount(coils.length + 1);
