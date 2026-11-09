@@ -16,6 +16,7 @@ import json
 import os
 import pathlib
 import sys
+import time
 import urllib.request
 
 import yaml
@@ -33,10 +34,15 @@ class Odoo:
     def _rpc(self, service, method, *args):
         body = json.dumps({"jsonrpc": "2.0", "method": "call", "params": {"service": service, "method": method, "args": args}})
         req = urllib.request.Request(f"{self.url}/jsonrpc", body.encode(), {"content-type": "application/json"})
-        res = json.load(urllib.request.urlopen(req, timeout=120))
-        if "error" in res:
-            raise RuntimeError(res["error"]["data"].get("message"))
-        return res["result"]
+        # Every call here is a read, so retrying is safe. Concurrent runs copying or dropping their
+        # ERP database on the same server can make one call fail ("cursor already closed").
+        for attempt in range(4):
+            res = json.load(urllib.request.urlopen(req, timeout=120))
+            if "error" not in res:
+                return res["result"]
+            if attempt < 3:
+                time.sleep(5 * (attempt + 1))
+        raise RuntimeError(res["error"]["data"].get("message"))
 
     def read(self, model, domain, fields):
         return self._rpc("object", "execute_kw", self.db, self.uid, self.password, model, "search_read",
