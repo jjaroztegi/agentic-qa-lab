@@ -1,0 +1,692 @@
+{
+  "id": "b1cc42936fbf5ef8",
+  "name": "QA · Case intake (key users)",
+  "nodes": [
+    {
+      "id": "e4ff422c-45fa-57b2-979c-55119893c90a",
+      "name": "Case intake",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "formTitle": "New test case",
+        "formDescription": "Describe it as you would to a new colleague: what is done, with which data, and what must happen. It is drafted in the catalog template and opened as a proposal (PR). After a functional review, an agent writes the automated test.",
+        "responseMode": "lastNode",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Title",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Process",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Order-to-coil"
+                  },
+                  {
+                    "option": "Quality"
+                  },
+                  {
+                    "option": "Logistics"
+                  },
+                  {
+                    "option": "Finance"
+                  },
+                  {
+                    "option": "Other"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Priority",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "A — critical"
+                  },
+                  {
+                    "option": "B — important"
+                  },
+                  {
+                    "option": "C — support"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Business owner",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Frequency",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "daily"
+                  },
+                  {
+                    "option": "weekly"
+                  },
+                  {
+                    "option": "monthly"
+                  },
+                  {
+                    "option": "per release"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Describe the case",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "How do you know it worked?",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {
+          "path": "case-intake"
+        }
+      },
+      "webhookId": "9e4c9518-3793-548e-8f53-d1d019d7a221"
+    },
+    {
+      "id": "98233d3d-db2a-5e69-8298-f7fdf4998aaf",
+      "name": "Catalog cases",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos//contents/catalog/cases",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    },
+    {
+      "id": "3783cc19-1ed4-55b7-8d4a-1a89486f8257",
+      "name": "Cases in review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        330,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos//git/matching-refs/heads/case/",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "9576ad77-b9bb-57c5-8010-7401c659c718",
+      "name": "Next ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\n// cases on main plus cases still open as PRs (branch case/cp-NNN), so two intakes never collide\nconst nums = [\n  ...$('Catalog cases').all().map((i) => /^CP-(\\d+)\\.yaml$/.exec(i.json.name ?? '')?.[1]),\n  ...$input.all().map((i) => /refs\\/heads\\/case\\/cp-(\\d+)$/.exec(i.json.ref ?? '')?.[1]),\n].filter(Boolean).map(Number);\nconst n = Math.max(0, ...nums) + 1;\nconst f = $('Case intake').first().json;\nreturn [{ json: { id: `CP-${String(n).padStart(3, '0')}`, form: f } }];\n"
+      }
+    },
+    {
+      "id": "a9a8acec-a284-5965-9515-eeadbb7b342c",
+      "name": "Example",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        -160
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos//contents/catalog/cases/CP-001.yaml",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.raw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    },
+    {
+      "id": "eaac5f04-49f4-509f-a8b1-9890d2853f44",
+      "name": "Draft case in the template",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ `Turn a key user's description into a test case in the single catalog template (YAML). Return ONLY the YAML, with no explanation and no code fences.\n\nRules:\n- id: ${$json.id}. Use exactly the keys of the example, in this order: id, title, process, subprocess, systems, priority, owner, frequency, preconditions, data, steps, expected_results, data_validation, dependencies. Write everything in English; keys inside data are snake_case English.\n- Expected results must be measurable (a value, a status, an exact message) and checkable without a person interpreting them.\n- If something is missing to make it measurable, do NOT invent it: write the field as \"PENDING: <what is missing>\" for the reviewer to complete.\n- The available systems are ERP (Odoo, standing in for SAP), MES (in-house application) and L2 (Java desktop client).\n- data_validation says how the result is checked in data (ERP mrp.production / sale.order, or the MES API /api/orders, /api/coils).\n\nExample case from the catalog:\n${$json.example}\n\nKey user's form:\nTitle: ${$json.form['Title']}\nProcess: ${$json.form['Process']}\nPriority: ${$json.form['Priority']}\nOwner: ${$json.form['Business owner']}\nFrequency: ${$json.form['Frequency']}\nDescription: ${$json.form['Describe the case']}\nHow it is checked: ${$json.form['How do you know it worked?'] ?? ''}` }}"
+      }
+    },
+    {
+      "id": "844e4467-cf0e-5725-a2c2-8f4eff53a355",
+      "name": "Claude Sonnet 5.5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        880,
+        220
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-sonnet-5-5"
+        },
+        "options": {
+          "maxTokensToSample": 2000,
+          "temperature": 0.2
+        }
+      },
+      "credentials": {
+        "anthropicApi": {
+          "id": "qaAnthropic00001",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "id": "4a69b3a3-267f-5c05-b0a1-f9557cecbdcf",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst id = $('Next ID').first().json.id;\nlet yaml = $json.text.trim().replace(/^```(?:ya?ml)?\\s*/i, '').replace(/```\\s*$/, '').trim() + '\\n';\nif (!yaml.startsWith(`id: ${id}`) && !yaml.includes(`\\nid: ${id}`)) throw new Error('The generated YAML does not have the expected id ' + id);\nconst title = (yaml.match(/^title:\\s*(.+)$/m) ?? [, id])[1].replace(/^[\"']|[\"']$/g, '');\nconst pending = (yaml.match(/PENDING/g) ?? []).length;\nreturn [{ json: { id, title, yaml, branch: `case/${id.toLowerCase()}`, content: Buffer.from(yaml).toString('base64'), pending } }];\n"
+      }
+    },
+    {
+      "id": "3fa38819-a623-509f-af8a-9c5468539c45",
+      "name": "SHA of main",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos//git/ref/heads/main",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    },
+    {
+      "id": "f3db0bc6-e723-55b6-b917-f216a2438591",
+      "name": "Create branch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos//git/refs",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ref: `refs/heads/${$('Prepare').first().json.branch}`, sha: $json.object.sha }) }}"
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    },
+    {
+      "id": "45bf7a38-b218-5e56-b485-40759e731478",
+      "name": "Upload case",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        0
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ `https://api.github.com/repos//contents/catalog/cases/${$('Prepare').first().json.id}.yaml` }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: `feat(catalog): ${$('Prepare').first().json.id} from the business intake form`, content: $('Prepare').first().json.content, branch: $('Prepare').first().json.branch }) }}"
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    },
+    {
+      "id": "1ae7d73a-7cf7-5e39-88c1-f6628899cb0a",
+      "name": "Open PR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos//pulls",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: `New case ${$('Prepare').first().json.id}: ${$('Prepare').first().json.title}`, head: $('Prepare').first().json.branch, base: \"main\",\n  body: `Case filed by **${$('Case intake').first().json['Business owner']}** through the n8n intake form and drafted in the catalog template by the intake workflow.\\n\\n` +\n        ($('Prepare').first().json.pending ? `${$('Prepare').first().json.pending} PENDING field(s): the functional reviewer must complete them before approving.\\n\\n` : '') +\n        `After functional review, add the \\`automate\\` label: the qa-author agent then explores the ERP and the MES, writes the test and pushes it to this PR.` }) }}"
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    },
+    {
+      "id": "a803b6f6-2fd9-5715-a55e-7feada9f4062",
+      "name": "Label: new-case",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ `https://api.github.com/repos//issues/${$json.number}/labels` }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: [\"new-case\"] }) }}"
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    },
+    {
+      "id": "0fd86980-8c22-5781-a90e-e671aaf0ad3b",
+      "name": "Control room: case drafted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        -220
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://control:17000/api/events",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify([\n  { run: `intake_${$execution.id}`, source: \"n8n\", kind: \"run\", case: $('Prepare').first().json.id,\n    data: { workflow: \"intake\", case: $('Prepare').first().json.id, title: $('Prepare').first().json.title, owner: $('Case intake').first().json['Business owner'] } },\n  { run: `intake_${$execution.id}`, source: \"n8n\", kind: \"stage\", stage: \"intake\", status: \"ok\", case: $('Prepare').first().json.id,\n    title: `Intake from ${$('Case intake').first().json['Business owner']}`, detail: $('Case intake').first().json['Describe the case'] },\n  { run: `intake_${$execution.id}`, source: \"n8n\", kind: \"stage\", stage: \"draft\", status: $('Prepare').first().json.pending ? \"warn\" : \"ok\",\n    case: $('Prepare').first().json.id, title: \"Case drafted in the catalog template\",\n    detail: $('Prepare').first().json.pending ? `${$('Prepare').first().json.pending} PENDING field(s) for the reviewer` : \"\", data: { yaml: $('Prepare').first().json.yaml } } ]) }}",
+        "options": {
+          "timeout": 3000
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "15a077ef-a0a7-5cc4-9078-255b4a47124f",
+      "name": "Control room: proposal opened",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        -220
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://control:17000/api/events",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run: `intake_${$execution.id}`, source: \"n8n\", kind: \"stage\", stage: \"pr\", status: \"ok\",\n  case: $('Prepare').first().json.id, pr: $('Open PR').first().json.number, url: $('Open PR').first().json.html_url,\n  title: `Proposal #${$('Open PR').first().json.number} opened` }) }}",
+        "options": {
+          "timeout": 3000
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "19074d13-1111-507d-9bcc-25c4557c2295",
+      "name": "Confirmation",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        2420,
+        0
+      ],
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "text",
+        "completionTitle": "={{ `Case ${$('Prepare').first().json.id} filed` }}",
+        "completionMessage": "={{ `Proposal opened: ${$('Open PR').first().json.html_url}\\n\\nA functional reviewer checks the case first. Then the agent writes the automated test, and the result appears in that same proposal.` }}"
+      },
+      "webhookId": "f4db14d9-8257-5e14-a261-3862ad137015"
+    },
+    {
+      "id": "eeff0190-6a3a-566e-b03a-fd446c94b21b",
+      "name": "Draft input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        770,
+        -160
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { ...$('Next ID').first().json, example: $json.data ?? '' } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Case intake": {
+      "main": [
+        [
+          {
+            "node": "Catalog cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalog cases": {
+      "main": [
+        [
+          {
+            "node": "Cases in review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cases in review": {
+      "main": [
+        [
+          {
+            "node": "Next ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Next ID": {
+      "main": [
+        [
+          {
+            "node": "Example",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Example": {
+      "main": [
+        [
+          {
+            "node": "Draft input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft input": {
+      "main": [
+        [
+          {
+            "node": "Draft case in the template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft case in the template": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "SHA of main",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Control room: case drafted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SHA of main": {
+      "main": [
+        [
+          {
+            "node": "Create branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create branch": {
+      "main": [
+        [
+          {
+            "node": "Upload case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload case": {
+      "main": [
+        [
+          {
+            "node": "Open PR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open PR": {
+      "main": [
+        [
+          {
+            "node": "Label: new-case",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Control room: proposal opened",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: new-case": {
+      "main": [
+        [
+          {
+            "node": "Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Sonnet 5.5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Draft case in the template",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin"
+  },
+  "pinData": {},
+  "tags": []
+}

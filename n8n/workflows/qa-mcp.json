@@ -1,0 +1,204 @@
+{
+  "id": "6b61f5d84f1455b4",
+  "name": "QA · MCP server",
+  "nodes": [
+    {
+      "id": "8f5abb27-215b-5614-aa9b-6b50ca75ae51",
+      "name": "QA MCP server",
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "authentication": "bearerAuth",
+        "path": "qa",
+        "instructions": "QA lab tools: launch regressions of critical processes (current or migrated ERP) and read results and open regressions."
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "qaMcpBearer00001",
+          "name": "MCP token"
+        }
+      },
+      "webhookId": "584d3abd-663d-5688-8862-542fcd40442f"
+    },
+    {
+      "id": "5536837d-54bd-5b9e-b75f-8806cbd59a00",
+      "name": "launch_regression",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        -200,
+        240
+      ],
+      "parameters": {
+        "toolDescription": "Launches the regression of critical processes. target: 'erp' (current) or 'erp-new' (migrated). mode: 'regression' or 'migration' (adds a before/after data comparison). reason: short text.",
+        "method": "POST",
+        "url": "https://api.github.com/repos//actions/workflows/regression.yml/dispatches",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Accept",
+              "valueProvider": "fieldValue",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"ref\":\"main\",\"inputs\":{\"target\":\"{target}\",\"mode\":\"{mode}\",\"reason\":\"{reason}\"}}",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "target",
+              "description": "erp or erp-new",
+              "type": "string"
+            },
+            {
+              "name": "mode",
+              "description": "regression or migration",
+              "type": "string"
+            },
+            {
+              "name": "reason",
+              "description": "why it is launched",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    },
+    {
+      "id": "cf56898a-053a-5bb5-85ba-d4354836eca9",
+      "name": "latest_runs",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        240
+      ],
+      "parameters": {
+        "toolDescription": "Latest test runs (CI of changes, regressions, test authoring) with their status and a link to the evidence.",
+        "method": "GET",
+        "url": "https://api.github.com/repos//actions/runs?per_page=8",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Accept",
+              "valueProvider": "fieldValue",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "optimizeResponse": true,
+        "responseType": "json",
+        "dataField": "workflow_runs",
+        "fieldsToInclude": "selected",
+        "fields": "name,display_title,status,conclusion,html_url,created_at,head_branch"
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    },
+    {
+      "id": "d6be3a60-cbf7-5888-8767-9b71e5536b4f",
+      "name": "open_regressions",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        240
+      ],
+      "parameters": {
+        "toolDescription": "Open regressions found by the suite (issues with their business case, impact and evidence).",
+        "method": "GET",
+        "url": "https://api.github.com/repos//issues?labels=regression&state=open",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Accept",
+              "valueProvider": "fieldValue",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "optimizeResponse": true,
+        "responseType": "json",
+        "dataField": "",
+        "fieldsToInclude": "selected",
+        "fields": "number,title,html_url,created_at,body"
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "launch_regression": {
+      "ai_tool": [
+        [
+          {
+            "node": "QA MCP server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "latest_runs": {
+      "ai_tool": [
+        [
+          {
+            "node": "QA MCP server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "open_regressions": {
+      "ai_tool": [
+        [
+          {
+            "node": "QA MCP server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin"
+  },
+  "pinData": {},
+  "tags": []
+}

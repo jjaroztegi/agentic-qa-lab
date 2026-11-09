@@ -1,0 +1,179 @@
+{
+  "id": "5eb5cb44aa01596b",
+  "name": "QA · Results to business",
+  "nodes": [
+    {
+      "id": "9921b6bd-312e-512b-b52e-6aa190fa0cf0",
+      "name": "Test result",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "qa-results",
+        "options": {}
+      },
+      "webhookId": "f54b44d2-50c0-5c50-8804-cbe87edf756d"
+    },
+    {
+      "id": "bb82abfd-2356-5494-8bbb-95d6bbf5a06e",
+      "name": "Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst e = $json.body ?? $json;\nconst f = e.failures ?? [];\nconst out = [];\nif (e.source === 'ci') {\n  out.push(`Origin: code change to the in-house MES (PR #${e.pr}). Agent triage verdict: ${e.verdict}.`);\n  for (const x of f) out.push(`- Case ${x.case} (${x.category}, confidence ${Math.round((x.confidence ?? 0) * 100)} %): ${x.business_explanation} Action: ${x.issue ?? x.action}.`);\n} else {\n  out.push(`Origin: regression of commercial systems. System under test: ${e.target}. Mode: ${e.mode}. Reason: ${e.reason}.`);\n  out.push(`End-to-end business cases result: ${e.e2e}. Statistics: ${JSON.stringify(e.stats ?? {})}.`);\n  if (e.diff) out.push(`Before/after data comparison:\\n${e.diff}`);\n}\nconst bad = String(e.verdict ?? '').startsWith('blocked') || e.e2e === 'failure' || e.compare === 'failure';\nreturn [{ json: { context: out.join('\\n'), run: e.run, bad, origin: e.source, pr: e.pr ?? null } }];\n"
+      }
+    },
+    {
+      "id": "3c102d56-0765-51f5-9247-63391b48938b",
+      "name": "Summary for business",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ `You are the quality lead of a steel plant. Write a short notice in English for the business key users (not technical) about this automated test result.\nRules: at most 120 words; calm and factual, no exclamation marks, no emojis. Start with one verdict line that says whether the change can go ahead (\"Passed\" or \"Blocked\"); then which business process is affected and what the impact would be on the plant or in the ERP; end with who has to act. No technical jargon (no locators, CI, JSON). Do not invent anything that is not below. Quantities in metric tonnes with a decimal point (47.75 t).\n\nResult:\n${$json.context}` }}"
+      }
+    },
+    {
+      "id": "b964fc4e-ed8a-535f-bb2a-1721ab8b989e",
+      "name": "Claude Haiku 5.5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        440,
+        220
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-haiku-5-5"
+        },
+        "options": {
+          "maxTokensToSample": 2000,
+          "temperature": 0.2
+        }
+      },
+      "credentials": {
+        "anthropicApi": {
+          "id": "qaAnthropic00001",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "id": "d2df746a-7ece-5174-81d7-db5ec4e0725c",
+      "name": "Compose notice",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst c = $('Context').first().json;\nconst text = $json.text.trim();\nconst esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\\*\\*(.+?)\\*\\*/g, '<b>$1</b>');\nconst html = `<div style=\"font-family:system-ui,sans-serif;max-width:620px;color:#222\">\n<p style=\"font-size:12px;color:#666;margin:0 0 12px\">QA lab · automated notice</p>\n${text.split('\\n').filter(Boolean).map((l) => `<p style=\"margin:0 0 10px;line-height:1.5\">${esc(l)}</p>`).join('')}\n<p style=\"margin-top:18px\"><a href=\"${c.run}\" style=\"color:#1d5fa8\">View the run's evidence</a></p></div>`;\nconst subject = `QA · ${c.bad ? 'Blocked' : 'Passed'} · ${c.origin === 'ci' ? `MES change (PR #${c.pr})` : 'Commercial systems regression'}`;\nreturn [{ json: { subject, html, text: text.replace(/\\*\\*/g, '') } }];\n"
+      }
+    },
+    {
+      "id": "55ce3662-66c4-55de-b60a-6d461094987b",
+      "name": "Send email (Teams in production)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ from: \"QA Lab <qa@example.com>\", to: [\"qa-team@example.com\"], subject: $json.subject, html: $json.html, text: $json.text }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "qaResend00000001",
+          "name": "Resend"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Test result": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Summary for business",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary for business": {
+      "main": [
+        [
+          {
+            "node": "Compose notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose notice": {
+      "main": [
+        [
+          {
+            "node": "Send email (Teams in production)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Haiku 5.5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summary for business",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin"
+  },
+  "pinData": {},
+  "tags": []
+}

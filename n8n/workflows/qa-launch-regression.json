@@ -1,0 +1,175 @@
+{
+  "id": "8338d7d006dc5ebb",
+  "name": "QA · Launch regression",
+  "nodes": [
+    {
+      "id": "653cbea1-7a67-59af-a89f-05fbdf74c94c",
+      "name": "Release event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -120
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "release-event",
+        "options": {}
+      },
+      "webhookId": "01b43dcf-a675-5004-a7f5-49c865ec02ac"
+    },
+    {
+      "id": "3f798dae-fb8b-55d1-b31f-c18a818817c2",
+      "name": "Rehearsal form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        80
+      ],
+      "parameters": {
+        "formTitle": "Launch regression",
+        "formDescription": "For the migration or release lead: runs the regression of critical processes against the chosen system.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "System under test",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Current ERP"
+                  },
+                  {
+                    "option": "Migrated ERP (lift & shift rehearsal)"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Test type",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Process regression"
+                  },
+                  {
+                    "option": "Migration: regression + data comparison"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Reason",
+              "fieldType": "text",
+              "requiredField": true,
+              "placeholder": "Rehearsal 2 of wave 1"
+            }
+          ]
+        },
+        "options": {
+          "path": "launch-regression",
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Regression started. The result will be sent by email."
+            }
+          }
+        }
+      },
+      "webhookId": "b2457614-0e5e-5713-ac95-22ad8d933f85"
+    },
+    {
+      "id": "1d011242-da04-54f4-ac5b-d9fcadc420aa",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst b = $json.body ?? $json;\nconst target = /migrat|new/i.test(b.target ?? b['System under test'] ?? '') ? 'erp-new' : 'erp';\nconst mode = /migrat|compar/i.test(b.mode ?? b['Test type'] ?? '') ? 'migration' : 'regression';\nconst reason = b.reason ?? b['Reason'] ?? [b.system, b.version].filter(Boolean).join(' ') ?? 'n8n';\nreturn [{ json: { target, mode, reason: String(reason).slice(0, 120) } }];\n"
+      }
+    },
+    {
+      "id": "3c6fe814-e552-500f-ae62-755f655eda92",
+      "name": "Launch regression (GitHub Actions)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos//actions/workflows/regression.yml/dispatches",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ref: \"main\", inputs: { target: $json.target, mode: $json.mode, reason: $json.reason } }) }}"
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "qaGithub00000001",
+          "name": "GitHub"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Release event": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rehearsal form": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Launch regression (GitHub Actions)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin"
+  },
+  "pinData": {},
+  "tags": []
+}
