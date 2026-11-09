@@ -1,0 +1,23 @@
+# Business case. Written by the business, independent of any tool.
+id: CP-009
+title: The MES rejects a coil with a malformed heat number
+process: Order-to-coil
+subprocess: Coil registration
+systems: [MES]
+priority: B
+owner: Rolling mill shift supervisor
+frequency: daily
+black_box: true   # the MES as a black box too: the agent learns its validations only from the screen
+preconditions:
+  - There is a pending or in-progress order in the MES
+data:
+  heat: "52340"   # heat numbers have 6 digits
+  weight_kg: 22000
+steps:
+  - Open the order in the MES
+  - Try to add a coil with heat no. 52340
+expected_results:
+  - The MES shows "Heat no. must have 6 digits" and does not register the coil
+data_validation:
+  - "MES GET /api/orders/{order}: the number of coils does not change"
+dependencies: {}
