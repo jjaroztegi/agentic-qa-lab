@@ -90,13 +90,13 @@ function orderPage(id: number, errors: string[] = []) {
       <h2>New coil</h2>
       ${errors.length ? html`<div class="errors" role="alert">${errors.map((e) => html`<div>${e}</div>`)}</div>` : ""}
       <form class="coil" method="post" action="/orders/${o.id}/coils">
-        <label>Coil no.<input name="coil_no" required></label>
-        <label>Heat no.<input name="heat_no" required inputmode="numeric"></label>
+        <label>Coil number<input name="coil_no" required></label>
+        <label>Heat number<input name="heat_no" required inputmode="numeric"></label>
         <label>Weight (kg)<input name="weight_kg" required inputmode="decimal"></label>
         <label>Thickness (mm)<input name="thickness_mm" required inputmode="decimal"></label>
         <label>Width (mm)<input name="width_mm" required inputmode="numeric"></label>
         <label>Quality status<select name="quality"><option value="OK">Released</option><option value="HOLD">Held</option></select></label>
-        <button type="submit">Register coil</button>
+        <button type="submit">Add coil</button>
       </form>
       <form method="post" action="/orders/${o.id}/complete" style="margin-top:16px">
         <button class="secondary" type="submit" ${coils.length ? "" : raw("disabled")}>Complete order</button>
