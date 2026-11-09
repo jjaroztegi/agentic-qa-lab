@@ -1,0 +1,31 @@
+# Business case. Written by the business, independent of any tool.
+id: CP-010
+title: Release of a held coil with supervisor authorization (Level 2)
+process: Quality
+subprocess: Coil hold and release
+systems: [L2 (Java desktop), MES]
+priority: A
+owner: Rolling mill quality (key user)
+frequency: daily
+preconditions:
+  - There is a held coil (HOLD) with reason "Flatness defect" in an order in progress
+  - Shift supervisor S0412 is registered in the MES; operator OP0117 is not a supervisor
+data:
+  coil: the held coil
+  reason: Reinspection passed
+  supervisor: S0412
+  comment: "Flatness reinspected: 9 I"
+steps:
+  - Open the client "Level 2 · Hot strip mill", filter the coil and select it in the table
+  - Press "Release", choose the reason "Reinspection passed" and press "Confirm release" without a supervisor
+  - Enter supervisor S0412 and the comment, and press "Confirm release"
+expected_results:
+  - Without a supervisor, the dialog shows "Release requires the supervisor number" and the coil stays HOLD
+  - With the supervisor, the table shows the coil as OK and the quality history shows a "Release" by "Sup. S0412"
+  - The order's produced quantity again includes exactly the coil's weight
+data_validation:
+  - "MES GET /api/coils/{id}: quality = OK, events[0].action = RELEASE, events[0].supervisor = S0412, events[0].motive = Reinspection passed"
+  - "MES POST /api/coils/{id}/release with supervisor OP0117: 422 'OP0117 is not a shift supervisor'"
+  - "MES GET /api/orders/{order}: produced_t = previous produced + coil weight / 1000"
+dependencies:
+  needs: a held coil (CP-002 leaves one)

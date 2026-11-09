@@ -1,0 +1,19 @@
+id: CP-008
+title: An order without coils cannot be completed or reported to the ERP
+process: Order-to-coil
+subprocess: Order completion
+systems: [MES, ERP]
+priority: B
+owner: Rolling mill shift supervisor
+frequency: daily
+preconditions:
+  - The MES has an order just arrived from the ERP, without coils
+data: {}
+steps:
+  - Open the order in the MES
+expected_results:
+  - The "Complete order" button is disabled
+data_validation:
+  - "MES GET /api/orders/{order}: status is still not completed"
+  - "ERP mrp.production of the order: state is still confirmed"
+dependencies: {}

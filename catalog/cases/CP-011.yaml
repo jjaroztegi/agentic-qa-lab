@@ -1,0 +1,30 @@
+# Business case. Written by the business, independent of any tool.
+id: CP-011
+title: A line stop registered in Level 2 reduces the shift's availability
+process: Production
+subprocess: Stop registration and availability
+systems: [L2 (Java desktop), MES]
+priority: B
+owner: Rolling mill shift supervisor
+frequency: daily
+preconditions:
+  - No stops are registered on the test date (a unique date per run)
+  - "Morning shift: 06:00–14:00, 480 min planned"
+data:
+  date: "<unique per run>"   # YYYY-MM-DD
+  shift: Morning
+  stop: { start: "10:00", end: "10:30", reason: Roll change }
+  overlapping_stop: { start: "10:15", end: "10:45", reason: Mechanical failure }
+steps:
+  - Open the client "Level 2 · Hot strip mill" and press "Stops"
+  - Enter the date, start 10:00, end 10:30, reason "Roll change" and press "Register stop"
+  - Select the shift "Morning"
+  - Register the overlapping stop 10:15–10:45 "Mechanical failure"
+expected_results:
+  - The table "Stops of the day" shows a 10:00–10:30 stop of 30 min with reason "Roll change"
+  - 'The Morning shift availability is "93.8%" with "Stops: 30 min of 480 min planned"'
+  - The overlapping stop is rejected with "Overlaps the stop" and the availability stays at 93.8%
+data_validation:
+  - "MES GET /api/stops?date=YYYY-MM-DD: exactly 1 stop, start_at = YYYY-MM-DDT10:00, end_at = YYYY-MM-DDT10:30"
+  - "MES GET /api/availability?date=YYYY-MM-DD&shift=M: stop_min = 30, availability_pct = 93.8"
+dependencies: {}

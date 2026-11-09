@@ -1,0 +1,27 @@
+id: CP-012
+title: A mill breakdown reported by the shift supervisor reaches maintenance as an urgent corrective request
+process: Maintenance
+subprocess: Breakdown report
+systems: [ERP]
+priority: A
+owner: Rolling mill maintenance manager
+frequency: daily
+preconditions:
+  - The ERP has the equipment "Finishing mill · Stand F3", assigned to the maintenance team "Rolling mill maintenance"
+  - The shift supervisor follows the equipment of the line
+data:
+  role: shift supervisor
+  equipment: Finishing mill · Stand F3
+  subject: Abnormal vibration on stand F3
+  type: Corrective
+  priority: highest (3 stars)
+steps:
+  - In the ERP, as the shift supervisor, open Maintenance and create a request with the subject "Abnormal vibration on stand F3" for the equipment "Finishing mill · Stand F3"
+  - Set type Corrective and the highest priority, and save
+expected_results:
+  - The request is in the stage "New Request"
+  - It is assigned to the maintenance team "Rolling mill maintenance" without the shift supervisor choosing it
+  - The requester is the shift supervisor
+data_validation:
+  - "ERP maintenance.request with that subject: maintenance_type = corrective, priority = 3, stage_id = New Request, maintenance_team_id = Rolling mill maintenance, owner_user_id = shift supervisor"
+dependencies: {}
