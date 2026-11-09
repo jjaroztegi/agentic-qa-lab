@@ -1,0 +1,9 @@
+{
+  "Title": "A sales order with a committed delivery date reaches the MES with that date",
+  "Process": "Order-to-coil",
+  "Priority": "A — critical",
+  "Business owner": "Production planning manager",
+  "Frequency": "daily",
+  "Describe the case": "When the sales rep confirms a sales order in the ERP with a committed delivery date, the order must reach the MES with that same date, because planning sequences the mill by delivery date. Example: 30 t of Pickled coil DD11 for Atlantic Tube Ltd. with delivery on 2026-12-15.",
+  "How do you know it worked?": "The MES list of manufacturing orders shows the order for the sales order with customer Atlantic Tube Ltd., grade DD11, 30 t and due date 2026-12-15."
+}

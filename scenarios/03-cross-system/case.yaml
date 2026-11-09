@@ -1,0 +1,36 @@
+# Business case. Written by the business, independent of any tool.
+id: CP-XXX
+title: From the ERP sales order to confirmed production, with a coil held by its Level 2 measurement
+process: Order-to-coil
+subprocess: Sales order, manufacturing, in-line quality and production confirmation to the ERP
+systems: [ERP, MES, L2 (Java desktop)]
+priority: A
+owner: Production planning lead (key user)
+frequency: daily
+preconditions:
+  - The ERP has the customer "Meridian Construction Inc." and the product "Hot-rolled coil S355J2"
+  - "S355J2 specification in the MES: thickness ± 0.12 mm, width −0/+10 mm, flatness ≤ 12 I"
+data:
+  customer: Meridian Construction Inc.
+  product: Hot-rolled coil S355J2
+  quantity_t: 48
+  coils:
+    - { weight_kg: 24100, thickness_mm: 4.0, width_mm: 1500, heat: "523401" }
+    - { weight_kg: 23650, thickness_mm: 4.0, width_mm: 1500, heat: "523401" }
+  coil_2_measurement: { thickness_mm: 4.18, width_mm: 1503, flatness_i: 7 }
+steps:
+  - In the ERP, as the sales rep, create and confirm a sales order for 48 t of "Hot-rolled coil S355J2" for "Meridian Construction Inc."
+  - In the MES, open the order that arrives from the ERP and add both coils as released
+  - In the Level 2 client, press "Measurements", load coil 2 and register thickness 4.18, width 1503 and flatness 7
+  - In the Level 2 client, press "Coils" and check the status of coil 2
+  - In the MES, complete the order and confirm production to the ERP
+expected_results:
+  - The order reaches the MES with customer "Meridian Construction Inc.", grade S355J2 and 48 t
+  - Level 2 shows the warning "Measurement out of tolerance" and coil 2 goes to HOLD with reason "Thickness out of tolerance" without the operator pressing "Hold"
+  - The MES shows produced "24.100 t" (only the released coil counts)
+  - In the ERP the manufacturing order is done with 24.1 t produced
+data_validation:
+  - "MES GET /api/coils/{id of coil 2}: quality = HOLD, hold_motive = Thickness out of tolerance"
+  - "MES GET /api/orders/{order}: produced_t = 24.1, status = reported"
+  - "ERP mrp.production of the order: state = done, qty_produced = 24.1"
+dependencies: {}
