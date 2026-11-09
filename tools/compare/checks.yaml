@@ -1,0 +1,57 @@
+# Before/after reconciliation for a lift & shift of the ERP (migration rehearsal).
+# Each check reads the same business data from source and target and compares by key.
+# Owned by the migration lead + business: what may differ, and by how much.
+
+expected_differences:        # differences a lift & shift is supposed to produce
+  - { check: config, key: web.base.url, reason: "New host name" }
+  - { check: config, key: database.uuid }
+  - { check: config, key: database.create_date }
+  - { check: config, key: database.secret }
+  - { check: crons, field: nextcall }
+
+checks:
+  - id: precision
+    title: Decimal precision (quantities in tonnes)
+    model: decimal.precision
+    key: [name]
+    fields: [digits]
+
+  - id: config
+    title: System parameters
+    model: ir.config_parameter
+    key: [key]
+    fields: [value]
+
+  - id: crons
+    title: Scheduled jobs
+    model: ir.cron
+    key: [cron_name]
+    fields: [active, interval_number, interval_type, nextcall]
+
+  - id: stock
+    title: Stock by product and location
+    model: stock.quant
+    domain: [["location_id.usage", "=", "internal"]]
+    key: [product_id, location_id]
+    fields: [quantity]
+    tolerance: 0.001
+
+  - id: sales
+    title: Sales orders
+    model: sale.order
+    key: [name]
+    fields: [state, partner_id, amount_untaxed]
+    tolerance: 0.01
+
+  - id: production
+    title: Manufacturing orders
+    model: mrp.production
+    key: [name]
+    fields: [state, product_id, product_qty, qty_produced]
+    tolerance: 0.001
+
+  - id: users
+    title: Users and access
+    model: res.users
+    key: [login]
+    fields: [active, tz, lang]
