@@ -95,9 +95,9 @@ export async function syncOnce(db: DatabaseSync, erp: Erp, log = console.log) {
   }
   const done = db.prepare("SELECT * FROM orders WHERE status = 'completed'").all() as Order[];
   for (const o of done) {
-    const coils = db.prepare("SELECT * FROM coils WHERE order_id = ?").all(o.id) as Coil[];
+    const { kg } = db.prepare("SELECT COALESCE(SUM(weight_kg), 0) AS kg FROM coils WHERE order_id = ?").get(o.id) as { kg: number };
     try {
-      const msg = await erp.confirmProduction(o.erp_ref, producedTonnes(coils));
+      const msg = await erp.confirmProduction(o.erp_ref, Math.round(kg) / 1000);
       db.prepare("UPDATE orders SET status = 'reported', erp_message = ? WHERE id = ?").run(msg, o.id);
       log(`MES -> ERP: ${msg}`);
     } catch (e) {
