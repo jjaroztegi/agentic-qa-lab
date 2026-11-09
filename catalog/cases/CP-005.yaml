@@ -1,0 +1,34 @@
+id: CP-005
+title: A sales order with a committed delivery date reaches the MES with that date
+process: Order-to-coil
+subprocess: Sales order confirmation → order transfer to MES → due date for mill sequencing
+systems: [ERP, MES]
+priority: A
+owner: Production planning manager
+frequency: daily
+preconditions:
+  - Customer "Atlantic Tube Ltd." exists in the ERP
+  - Product "Pickled coil DD11" is made to order (routes MTO + Manufacture), so confirming the sales order creates a manufacturing order
+data:
+  customer: Atlantic Tube Ltd.
+  product: Pickled coil DD11
+  grade: DD11
+  quantity_t: 30
+  committed_delivery_date: "2026-12-15"
+steps:
+  - In the ERP, as the sales rep, create a quotation for the customer with the product and quantity, and set the committed delivery date
+  - Confirm the sales order in the ERP
+  - The ERP creates the manufacturing order and the MES picks it up automatically (interface every 10 s); nobody acts in between
+  - In the MES, open the list of manufacturing orders
+  - Find the order that corresponds to the sales order
+expected_results:
+  - "The MES list shows an order for the sales order with customer Atlantic Tube Ltd."
+  - "That MES order shows grade DD11"
+  - "That MES order shows quantity 30 t"
+  - "That MES order shows due date 2026-12-15, equal to the committed delivery date in the ERP"
+  - "The order appears in the MES within 1 minute of the confirmation"
+data_validation:
+  - "ERP sale.order: state = sale, commitment_date = 2026-12-15"
+  - "MES GET /api/orders (order whose sale_ref is the sales order): customer = Atlantic Tube Ltd., grade = DD11, qty_t = 30, due_date = 2026-12-15"
+dependencies:
+  creates: [sales order, MES order]
