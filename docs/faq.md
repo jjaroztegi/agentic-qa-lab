@@ -22,7 +22,7 @@ It works on disposable copies of the test environment, with a fixed list of tool
 
 ## What does it cost, and how long does it take?
 
-Every run records its duration and model cost, and the control room's Overview shows them per case. In the reference run of all eight scenarios, authoring took 1.8 to 8 minutes per case and US$0.50 to US$1.62 in model usage, plus a person's review.
+Every run records its duration and model cost, and the control room's Overview shows them per case. In the reference run of all eight scenarios, authoring took 2.4 to 9.5 minutes per case and US$0.50 to US$1.67 in model usage, plus a person's review.
 
 ## Does it scale?
 

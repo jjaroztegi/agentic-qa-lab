@@ -50,6 +50,23 @@ Each story runs with one command, `scenarios/run.sh <name>`, and leaves a pull r
 
 See [docs/guide/scenarios.md](docs/guide/scenarios.md) for what to watch in each one.
 
+## Results of the reference run
+
+All eight scenarios ran once on this repository. Each PR holds the case, the test, the agent's report and a link to the replay.
+
+| Scenario | Outcome |
+|---|---|
+| 01 | The agent found a real defect: the MES stored delivery dates one day early for time zones ahead of UTC. It kept the expectation and left the test red ([#1](https://github.com/jjaroztegi/agentic-qa-lab/pull/1)). A developer fixed the MES ([#9](https://github.com/jjaroztegi/agentic-qa-lab/pull/9)), and the same test passed unchanged. |
+| 02 | 3 of 3 green on the Java client with no prior tests. The agent reported that the MES API cannot register a coil, a testability gap ([#2](https://github.com/jjaroztegi/agentic-qa-lab/pull/2)). |
+| 03 | One test across the ERP, the MES and the Java client, 3 of 3 green ([#3](https://github.com/jjaroztegi/agentic-qa-lab/pull/3)). |
+| 04 | Blocked as an application regression in two cases: held coils would have counted as produced, 69.75 t instead of 47.75 t ([#10](https://github.com/jjaroztegi/agentic-qa-lab/pull/10), [#12](https://github.com/jjaroztegi/agentic-qa-lab/issues/12), [#13](https://github.com/jjaroztegi/agentic-qa-lab/issues/13)). |
+| 05 | Three cases classified as test drift. The locators were repaired, the guard confirmed no check changed, and the rerun passed ([#11](https://github.com/jjaroztegi/agentic-qa-lab/pull/11)). |
+| 06 | 3 of 7 business cases failed on the migrated ERP, and the data comparison found both slips: quantity precision and the disabled scheduler ([run](https://github.com/jjaroztegi/agentic-qa-lab/actions/runs/42685724717)). |
+| 07 | Four cases authored in parallel on three runners, all green ([#4](https://github.com/jjaroztegi/agentic-qa-lab/pull/4), [#5](https://github.com/jjaroztegi/agentic-qa-lab/pull/5), [#6](https://github.com/jjaroztegi/agentic-qa-lab/pull/6), [#7](https://github.com/jjaroztegi/agentic-qa-lab/pull/7)). Two agents reported that their case was missing data, and said which values they had to assume. |
+| 08 | 3 of 3 green on the ERP maintenance module, with notes on how the form behaves ([#8](https://github.com/jjaroztegi/agentic-qa-lab/pull/8)). |
+
+Authoring took 2.4 to 9.5 minutes per case and US$0.50 to US$1.67 in model usage, US$7.35 for all eight cases. Each test then needed a person's review.
+
 ## Guardrails
 
 1. Verdicts come from data checks against what the business wrote down, never from a model's opinion.
